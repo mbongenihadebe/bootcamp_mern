@@ -2,6 +2,8 @@ import {useState, useEffect } from 'react'
 import { Container, Grid, makeStyles, CircularProgress, Slider, Paper, TextField, Typography,FormControl, Radio, FormControlLabel, RadioGroup} from '@material-ui/core';
 import BootcampCard from '../components/BootcampCard';
 
+import {useHistory} from 'react-router-dom';
+
 import axios from 'axios';
  const useStyles = makeStyles({
      root:{
@@ -32,12 +34,19 @@ import axios from 'axios';
 const BootcampsPage = () => {
     // MAterial-ui styles
 const classes = useStyles();
-
+const history = useHistory();
     //Component State
     const [bootcamps, setBootcamps] = useState([]);
     const [loading, setLoading] = useState (false);
-//Side Effects
-useEffect(()=>{
+
+
+
+    const [sliderMax, setSliderMax] = useState(1000);
+    const [priceRange, setPriceRange] = useState([25,75]);
+ 
+    const[filter,setFilter] = useState("");
+    //Side Effects
+useEffect( ()=> {
     let cancel;
 
 const fetchData = async() => {
@@ -57,7 +66,22 @@ const fetchData = async() => {
     }
 }
 fetchData();
-}, [])
+}, [filter]);
+
+const onSliderCommitHandler = (e, newValue) =>{
+    buildRangeFilter(newValue);
+
+};
+
+const buildRangeFilter = (newValue) =>{
+
+const urlFilter =`?price[gte]=${newValue[0]}&price[lte]=${newValue[1]}`;
+
+setFilter(urlFilter);
+
+history.push(urlFilter);
+
+};
     return (
        <Container className={classes.root}>
 
@@ -73,7 +97,11 @@ fetchData();
                 <Slider
                 
                 min={0}
-                max={100}
+                max={sliderMax} 
+                value={priceRange} 
+                valueLabelDisplay="auto"
+                onChange={(e, newValue) => setPriceRange(newValue)}
+                onChangeCommited={onSliderCommitHandler}
                 />
 <div className={classes.priceRangeInputs}>
     <TextField

@@ -1,4 +1,4 @@
-import {BrowserRouter as Router, Switch, Route} from 'react-router-dom'
+import {BrowserRouter as Router, Switch, Route} from 'react-router-dom';
 import BootcampsPage from './pages/BootcampsPage';
 import Navbar from './components/Navbar';
 

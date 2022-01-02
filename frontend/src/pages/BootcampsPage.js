@@ -2,7 +2,7 @@ import {useState, useEffect } from 'react'
 import { Container, Grid, makeStyles, CircularProgress, Slider, Paper, TextField, Typography,FormControl, Radio, FormControlLabel, RadioGroup} from '@material-ui/core';
 import BootcampCard from '../components/BootcampCard';
 
-import {useHistory} from 'react-router-dom';
+import {useHistory, useLocation} from 'react-router-dom';
 
 import axios from 'axios';
  const useStyles = makeStyles({
@@ -35,6 +35,9 @@ const BootcampsPage = () => {
     // MAterial-ui styles
 const classes = useStyles();
 const history = useHistory();
+const location = useLocation();
+
+const params = location.search ? location.search : null;
     //Component State
     const [bootcamps, setBootcamps] = useState([]);
     const [loading, setLoading] = useState (false);
@@ -43,8 +46,27 @@ const history = useHistory();
 
     const [sliderMax, setSliderMax] = useState(1000);
     const [priceRange, setPriceRange] = useState([25,75]);
- 
+ const [priceOrder, setPriceOrder] = useState("descending");
+
+ const [sorting, setSorting] = useState("");
     const[filter,setFilter] = useState("");
+    
+const updateUIValues =(uiValues) => {
+    setSliderMax(uiValues.maxPrice);
+
+    if(uiValues.filtering.price){
+        let priceFilter = uiValues.filtering.price;
+        setPriceRange([Number(priceFilter.gte), Number(priceFilter.lte)]);
+    }
+
+    if(uiValues.sorting.price){
+        let priceSort = uiValues.sorting.price;
+        setPriceOrder(priceSort)
+    }
+
+};
+
+
     //Side Effects
 useEffect( ()=> {
     let cancel;
@@ -52,26 +74,93 @@ useEffect( ()=> {
 const fetchData = async() => {
     setLoading(true);
     try{
+        let query;
+
+
+
+
+if(params && !filter){
+    query = params
+
+}else{
+    query = filter;
+
+}
+
+if(sorting){
+    if(query.length === 0){
+        query =`?sort=${sorting}`
+    }else{
+      query = query + "&sort" + sorting;  
+    }
+}
+
         const { data } = await axios({
             method: "GET",
-            url: `/api/v1/bootcamps`,
-            cancelToken: new axios.cancelToken((c)=> cancel = c)
+            url: `/api/v1/bootcamps${query}`,
+            cancelToken: new axios.cancelToken((c)=> (cancel = c)),
 
-        })
+        });
 
         setBootcamps(data.data);
         setLoading(false);
+        updateUIValues(data.uiValues);
+
+
+
     }catch(error){
+        if(axios.isCancel(error)) return;
+
         console.log(error.response.data);
     }
 }
 fetchData();
-}, [filter]);
+return () => cancel();
+}, [filter, params, sorting]);
+
+
+const handlerPriceInputChange = (e, type) =>{
+    let newRange;
+
+    if(type === "lower"){
+       
+        newRange =[...priceRange];
+        newRange[0] = Number(e.target.value);
+
+        setPriceRange(newRange);
+    }
+
+
+    if(type === "upper"){
+         newRange =[...priceRange];
+        newRange[1] = Number(e.target.value);
+
+        setPriceRange(newRange);
+    }
+    
+}
 
 const onSliderCommitHandler = (e, newValue) =>{
     buildRangeFilter(newValue);
 
 };
+
+const onTextfieldCommitHandler = (newValue) =>{
+    buildRangeFilter(priceRange); 
+
+};
+
+const handleSortChange =(e) => {
+    setPriceOrder(e.target.value);
+
+    if(e.target.value === "ascending"){
+    setSorting("price");
+    }else if(e.target.value==="descending"){
+        setSorting("-price");
+
+    }
+
+}
 
 const buildRangeFilter = (newValue) =>{
 
@@ -82,6 +171,10 @@ setFilter(urlFilter);
 history.push(urlFilter);
 
 };
+
+
+
+
     return (
        <Container className={classes.root}>
 
@@ -100,6 +193,7 @@ history.push(urlFilter);
                 max={sliderMax} 
                 value={priceRange} 
                 valueLabelDisplay="auto"
+                disabled={loading}
                 onChange={(e, newValue) => setPriceRange(newValue)}
                 onChangeCommited={onSliderCommitHandler}
                 />
@@ -111,7 +205,9 @@ history.push(urlFilter);
     variant="outlined"
     type='number'
     disabled={loading}
-    value={0}
+    value={priceRange[0]}
+    onChange={(e) => handlerPriceInputChange(e, "lower")}
+    onBlur={onTextfieldCommitHandler}
     />
 
 
@@ -122,7 +218,9 @@ history.push(urlFilter);
     variant="outlined"
     type='number'
     disabled={loading}
-    value={75}
+    value={priceRange[1]}
+    onChange={(e) => handlerPriceInputChange(e, "upper")}
+    onBlur={onTextfieldCommitHandler}
     />
 </div>
                
@@ -138,13 +236,15 @@ history.push(urlFilter);
 
     <FormControl component="fieldset" className={classes.filters}>
         <RadioGroup aria-label="price=oder"
-        name="price-order">
+        name="price-order" value={priceOrder} onChange={handleSortChange}>
 <FormControlLabel
+value="descending"
 disabled={loading}
 control={<Radio/>}
 label="Price: Highest - lowest"/>
 
 <FormControlLabel
+value="ascending"
 disabled={loading}
 control={<Radio/>}
 label="Price: Lowest - Highest"/>
@@ -180,4 +280,4 @@ label="Price: Lowest - Highest"/>
     )
 }
 
-export default BootcampsPage
+export default BootcampsPage;
